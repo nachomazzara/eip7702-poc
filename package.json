@@ -1,0 +1,22 @@
+{
+  "name": "eip7702",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "delegate_and_execute": "ts-node src/delegate_and_execute.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "dotenv": "^16.5.0",
+    "ethers": "^6.14.1"
+  },
+  "devDependencies": {
+    "@types/dotenv": "^6.1.1",
+    "@types/node": "^22.15.21",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3"
+  }
+}
