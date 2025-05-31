@@ -16,7 +16,9 @@ async function main() {
 
   // ── 1. Provider & wallets setup ───────────────────────────────
   console.log('\n📡 Setting up provider and wallets...')
-  const provider = new JsonRpcProvider(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`)
+  const provider = new JsonRpcProvider(
+    `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`
+  )
 
   // Authorizer: signs the EIP-712 authorization (no ETH required)
   const authorizerKey = process.env.AUTHORIZER_PRIVATE_KEY!
@@ -41,14 +43,16 @@ async function main() {
   const delegatorAddr = '0x0000000000000000000000000000000000000000'
 
   // Build authorization message hash: keccak256(0x05 || RLP([chainId, delegatedContract, authNonce]))
-  const messageHash = keccak256(concat([
-    '0x05',  // MAGIC_PREFIX: Domain separator for EIP-7702
-    encodeRlp([
-      chainId ? toBeHex(chainId) : '0x',
-      delegatorAddr,
-      authNonce ? toBeHex(authNonce) : '0x'
+  const messageHash = keccak256(
+    concat([
+      '0x05',  // MAGIC_PREFIX: Domain separator for EIP-7702
+      encodeRlp([
+        chainId ? toBeHex(chainId) : '0x',
+        delegatorAddr,
+        authNonce ? toBeHex(authNonce) : '0x'
+      ])
     ])
-  ]))
+  )
 
   // Sign the authorization hash with the EOA key (Authority)
   const signature = await new SigningKey(authorizer.privateKey).sign(messageHash)

@@ -33,7 +33,9 @@ At the end of the blog post, we'll cover how you can enhance security to avoid r
 
 * **Provider & Wallets Initialization**:
 ```typescript
-  const provider = new JsonRpcProvider(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`)
+  const provider = new JsonRpcProvider(
+    `https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`
+  )
 
   // **Authorizer**: Signs off-chain authorization messages (does not require Ether). The EOA that will be converted to a smart account
   const authorizerKey = process.env.AUTHORIZER_PRIVATE_KEY!
@@ -44,8 +46,14 @@ At the end of the blog post, we'll cover how you can enhance security to avoid r
   const relayer = new Wallet(relayerKey, provider)
 
   const chainId = (await provider.getNetwork()).chainId
-  const authNonce = await provider.getTransactionCount(authorizer.address, 'pending')
-  const relayerNonce = await provider.getTransactionCount(relayer.address, 'pending')
+  const authNonce = await provider.getTransactionCount(
+    authorizer.address, 
+    'pending'
+  )
+  const relayerNonce = await provider.getTransactionCount(
+    relayer.address, 
+    'pending'
+  )
 
   // **Delegator**: The EOA will delegate execution to this smart contract, running the contract’s implementation and storage layout directly within the EOA’s context, similar to how a delegatecall operates.
   const delegatorAddr = process.env.DELEGATOR_ADDRESS!
