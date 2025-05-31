@@ -1,4 +1,6 @@
+// filename: sendSponsoredBatch.ts
 import 'dotenv/config'
+
 import { 
   encodeRlp, 
   JsonRpcProvider, 
@@ -8,13 +10,15 @@ import {
   keccak256, 
   SigningKey, 
   concat, 
+  recoverAddress, 
+  Signature, 
   AuthorizationLike,
-  toBeHex
+  toBeHex,
+  parseUnits
 } from 'ethers'
 
 async function main() {
   console.log('🚀 Starting EIP-7702 transaction process...')
-
   // ── 1. Provider & wallets setup ───────────────────────────────
   console.log('\n📡 Setting up provider and wallets...')
   const provider = new JsonRpcProvider(`https://eth-sepolia.g.alchemy.com/v2/${process.env.ALCHEMY_KEY}`)
@@ -66,28 +70,35 @@ async function main() {
   // ── 3. Build the batch call (ERC-20 transfer) ─────────────────
   console.log('\n📦 Building batch call for ERC-20 transfer...')
   const tokenAddr = process.env.ERC20_ADDRESS
-  const recipient = process.env.ERC20_RECIPIENT_1_ADDRESS
-  const recipient2 = process.env.ERC20_RECIPIENT_2_ADDRESS
+  const dclController = process.env.DCL_CONTROLLER!
 
-  const amount = toBigInt('1000000000000000000') // 1⋅10¹⁸
+  const amount = toBigInt('100000000000000000000') // 100⋅10¹⁸
 
   console.log('Token address:', tokenAddr)
-  console.log('Recipient:', recipient)
+  console.log('Spender:', dclController)
   console.log('Amount:', amount.toString())
 
-  const erc20Iface = new Interface([
-    'function transfer(address to, uint256 amount)'
+  // 1. Approve calldata
+  const erc20Interface = new Interface([
+    'function approve(address spender, uint256 amount)'
   ])
-  const transferData = erc20Iface.encodeFunctionData('transfer', [recipient, amount])
-  console.log('Transfer data:', transferData)
+  
+  const approveCalldata = erc20Interface.encodeFunctionData('approve', [dclController, amount])
 
-  const transferData2 = erc20Iface.encodeFunctionData('transfer', [recipient2, amount])
-  console.log('Transfer data:', transferData2)
+  // 2. Register calldata
+  const registerInterface = new Interface([
+    'function register(string _name, address _beneficiary)'
+  ])
+
+  const name = '0xhackmd'
+  const registerCalldata = registerInterface.encodeFunctionData('register', [name, authorizer.address])
+
 
   const calls = [
-    { target: tokenAddr, value: 0n, data: transferData },
-    { target: tokenAddr, value: 0n, data: transferData2 }
+    { target: tokenAddr, value: 0n, data: approveCalldata },
+    { target: dclController, value: 0n, data: registerCalldata }
   ]
+
   const batchIface = new Interface([
     'function executeBatch((address target,uint256 value,bytes data)[] calls)'
   ])

@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "delegate_and_execute": "ts-node src/delegate_and_execute.ts"
+    "delegate": "ts-node src/delegate.ts",
+    "undelegate": "ts-node src/undelegate.ts",
+    "delegate_and_execute": "ts-node src/delegate_and_execute.ts",
+    "register_name": "ts-node src/register_name.ts"
   },
   "keywords": [],
   "author": "",

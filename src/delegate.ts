@@ -3,7 +3,6 @@ import {
   encodeRlp, 
   JsonRpcProvider, 
   Wallet, 
-  Interface, 
   toBigInt, 
   keccak256, 
   SigningKey, 
@@ -63,37 +62,6 @@ async function main() {
 
   console.log('Authorization object:', authorization)
 
-  // ── 3. Build the batch call (ERC-20 transfer) ─────────────────
-  console.log('\n📦 Building batch call for ERC-20 transfer...')
-  const tokenAddr = process.env.ERC20_ADDRESS
-  const recipient = process.env.ERC20_RECIPIENT_1_ADDRESS
-  const recipient2 = process.env.ERC20_RECIPIENT_2_ADDRESS
-
-  const amount = toBigInt('1000000000000000000') // 1⋅10¹⁸
-
-  console.log('Token address:', tokenAddr)
-  console.log('Recipient:', recipient)
-  console.log('Amount:', amount.toString())
-
-  const erc20Iface = new Interface([
-    'function transfer(address to, uint256 amount)'
-  ])
-  const transferData = erc20Iface.encodeFunctionData('transfer', [recipient, amount])
-  console.log('Transfer data:', transferData)
-
-  const transferData2 = erc20Iface.encodeFunctionData('transfer', [recipient2, amount])
-  console.log('Transfer data:', transferData2)
-
-  const calls = [
-    { target: tokenAddr, value: 0n, data: transferData },
-    { target: tokenAddr, value: 0n, data: transferData2 }
-  ]
-  const batchIface = new Interface([
-    'function executeBatch((address target,uint256 value,bytes data)[] calls)'
-  ])
-  const batchData = batchIface.encodeFunctionData('executeBatch', [calls])
-  console.log('Batch data:', batchData)
-
   // ── 4. Build and send the transaction ────────────────────────
   console.log('\n🔨 Building and sending transaction...')
   
@@ -105,9 +73,9 @@ async function main() {
     maxPriorityFeePerGas: toBigInt('1000000000'),
     maxFeePerGas: toBigInt('10000000000'),
     gasLimit: 2_000_000n,
-    to: authorizer.address,
+    to: '0x0000000000000000000000000000000000000000',
     value: 0n,
-    data: batchData,
+    data: '0x',
     accessList: [],
     authorizationList: [authorization]
   }
