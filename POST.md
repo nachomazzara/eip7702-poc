@@ -4,7 +4,7 @@
 
 ## What is EIP-7702?
 
-[EIP-7702](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md), introduced in Ethereum's Pectra upgrade, enables traditional user wallets (EOAs) to temporarily leverage smart contract capabilities within individual transactions. This innovation allows users to batch transactions, benefit from sponsored (gasless) payments, integrate alternative authentication methods (social recovery), and set spending limits—all without permanently converting their accounts into smart contracts. The upgrade significantly simplifies user interactions and enhances Ethereum’s usability, security, and flexibility.
+[EIP-7702](https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md), introduced in Ethereum's Pectra upgrade, enables traditional user wallets (EOAs) to temporarily leverage smart contract capabilities within individual transactions. This innovation allows users to batch transactions, benefit from sponsored (gasless) payments, integrate alternative authentication methods (social recovery), and set spending limits—all without permanently converting their accounts into smart contracts. The upgrade significantly simplifies user interactions and enhances Ethereum's usability, security, and flexibility.
 
 ## Introduction
 
@@ -55,13 +55,13 @@ At the end of the blog post, we'll cover how you can enhance security to avoid r
     'pending'
   )
 
-  // **Delegator**: The EOA will delegate execution to this smart contract, running the contract’s implementation and storage layout directly within the EOA’s context, similar to how a delegatecall operates.
+  // **Delegator**: The EOA will delegate execution to this smart contract, running the contract's implementation and storage layout directly within the EOA's context, similar to how a delegatecall operates.
   const delegatorAddr = process.env.DELEGATOR_ADDRESS!
 }
 ```
 
 The Delegator contract used in this post has a single core method:
-```Typescript
+```typescript
 function executeBatch(Call[] calldata calls)
 ```
 
@@ -79,7 +79,7 @@ pragma solidity ^0.8.19;
 
 /// @title 7702 Batch Delegator
 /// @notice Under an EIP-7702 set-code tx, your EOA can adopt this code and forward **batches** of calls.
-///         Sign an authorization for this contract’s address, then send a type-0x04 tx
+///         Sign an authorization for this contract's address, then send a type-0x04 tx
 ///         to your EOA with data = abi.encodeWithSelector(BatchDelegator.executeBatch.selector, calls).
 contract BatchDelegator {
     struct Call {
@@ -140,16 +140,16 @@ keccak256(0x05 || RLP([chainId, contract_address, nonce]))
 
 - `0x05` is the MAGIC_PREFIX – a one-byte domain separator used to ensure the hash is unique to EIP-7702 and prevents cross-protocol replay attacks.
 
-- `RLP([chainId, contract_address, nonce])` is a list of 3 values encoded using Ethereum’s Recursive Length Prefix (RLP) encoding.
+- `RLP([chainId, contract_address, nonce])` is a list of 3 values encoded using Ethereum's Recursive Length Prefix (RLP) encoding.
 
 - The EOA must then sign this hash using its private key. This signature is what allows the EOA to delegate execution rights temporarily to the contract.
 
 
-Now let’s expand on how the `authorizationList` is used in EIP-7702 transactions and what parameters are required, following the spec and what the code is doing.
+Now let's expand on how the `authorizationList` is used in EIP-7702 transactions and what parameters are required, following the spec and what the code is doing.
 
 Each item in the list is an **authorization object**, and it must include three specific fields:
 
-```ts
+```typescript
 const authorization: AuthorizationLike = {
   chainId,            // The chain where the delegation applies
   address: delegatorAddr, // The smart contract to which you are delegating execution
@@ -158,7 +158,7 @@ const authorization: AuthorizationLike = {
 }
 ```
 
-Here’s what each parameter means:
+Here's what each parameter means:
 
 ---
 
@@ -176,17 +176,17 @@ This is the **delegator smart contract**—the contract the EOA wants to tempora
 
 #### 🔁 `nonce`
 
-The `nonce` is taken from the EOA’s current pending nonce (e.g., using `getTransactionCount(authorizer.address, 'pending')`). It ensures that the authorization is **used only once**. If you reuse the same authorization in another transaction, it will be invalid.
+The `nonce` is taken from the EOA's current pending nonce (e.g., using `getTransactionCount(authorizer.address, 'pending')`). It ensures that the authorization is **used only once**. If you reuse the same authorization in another transaction, it will be invalid.
 
 ---
 
 #### ✍️ `signature`
 
-This is the EOA’s **raw ECDSA signature** of the `messageHash` (see previous explanation). It proves that the EOA willingly authorized delegation to the contract at that nonce and on that chain.
+This is the EOA's **raw ECDSA signature** of the `messageHash` (see previous explanation). It proves that the EOA willingly authorized delegation to the contract at that nonce and on that chain.
 
 It is signed using:
 
-```ts
+```typescript
 const signature = await new SigningKey(authorizer.privateKey).sign(messageHash)
 ```
 
@@ -198,7 +198,7 @@ const signature = await new SigningKey(authorizer.privateKey).sign(messageHash)
 
 Once you have the full authorization object, you include it in the transaction like this:
 
-```ts
+```typescript
 const tx = {
   type: 4,
   chainId,
@@ -242,7 +242,7 @@ const authorization: AuthorizationLike = {
 
 ### Step 3: Sending the Transaction
 
-We now have everything we need to send the transaction. Since we’re only creating the delegation (and not executing anything yet), the transaction will have:
+We now have everything we need to send the transaction. Since we're only creating the delegation (and not executing anything yet), the transaction will have:
 
 - Type: `0x04` (EIP-7702)
 
@@ -288,7 +288,7 @@ This is a minimal, no-op transaction where the only effect is that the EOA **ado
 
 ✅ The EOA now has delegated code, but nothing was executed yet.
 
-There, you’ll see a new section under the transaction details labeled **Authorization List**. This is part of the new `0x04` transaction format introduced by EIP-7702.
+There, you'll see a new section under the transaction details labeled **Authorization List**. This is part of the new `0x04` transaction format introduced by EIP-7702.
 
 If everything was successful, you should see:
 
@@ -297,11 +297,11 @@ If everything was successful, you should see:
 * The **nonce** used
 * The **signature** that validates the delegation
 
-![Screenshot 2025-05-31 at 7.20.56 PM](https://hackmd.io/_uploads/Hk5---Yzgl.png)
+![Authority Match](https://hackmd.io/_uploads/Hk5---Yzgl.png)
 
 You can see in the etherscan that the authority match to the authorizer address and the vailidty is `True`
 
-![Screenshot 2025-05-31 at 7.21.15 PM](https://hackmd.io/_uploads/ByqbW-Yzxg.png)
+![See new Transactions Type](https://hackmd.io/_uploads/ByqbW-Yzxg.png)
 
 You can also see in the [address page](https://sepolia.etherscan.io/address/0xBA6E94cCd3EF39B5214dc945FB53ad4aadD0bcdb#authlist7702) the `Other Transactions` tab with the delegation created
 
@@ -333,7 +333,7 @@ But with EIP-7702, we can **batch both steps** and execute them in a single tran
 
 ### 🧪 Smart Contract Overview: Name Registry
 
-The contract we’re using includes a `register` function:
+The contract we're using includes a `register` function:
 
 ```solidity
 function register(string _name, address _beneficiary) external;
@@ -351,7 +351,7 @@ But before doing this, the caller (your EOA) must approve the registry contract 
 
 ### 🧰 EIP-7702 to the Rescue
 
-We’ll combine both actions into a single transaction:
+We'll combine both actions into a single transaction:
 
 1. `approve(tokenSpender, 100e18)` — ERC-20 approval
 2. `register("myname", myEOA)` — call the registry
@@ -362,7 +362,7 @@ These two actions are wrapped into a batch and executed via the **delegated cont
 
 ### ⚙️ Prerequisite
 
-Before doing this, you must ensure your EOA **has 100 tokens**. If not, mint or transfer tokens to the EOA first so the `register` call doesn’t fail due to insufficient balance.
+Before doing this, you must ensure your EOA **has 100 tokens**. If not, mint or transfer tokens to the EOA first so the `register` call doesn't fail due to insufficient balance.
 
 ---
 
@@ -376,9 +376,9 @@ To execute multiple actions in a single transaction, we need to construct the `c
 
 We follow the **same delegation flow as before**, but instead of leaving the calldata empty (`0x`), we now include our batch payload.
 
-Let’s focus on how we construct that calldata:
+Let's focus on how we construct that calldata:
 
-```ts
+```typescript
 // 1. Approve calldata
 const erc20Interface = new Interface([
   'function approve(address spender, uint256 amount)'
@@ -419,14 +419,14 @@ const batchData = batchIface.encodeFunctionData('executeBatch', [calls]);
 ### 📦 What's Happening Here?
 
 * We first **encode an ERC-20 approval**, allowing the controller contract to spend tokens on behalf of the EOA.
-* Then we **encode a call to the Name Registry’s `register()` method**, which performs the NFT minting.
+* Then we **encode a call to the Name Registry's `register()` method**, which performs the NFT minting.
 * Both calls are wrapped in a single array and encoded via `executeBatch(...)` from the Delegator contract.
 
 This `batchData` is what we set as the `data` field in the transaction. The `to` field should now be set to the **EOA address**, because it has already delegated its code via EIP-7702.
 
 Together with the `authorizationList`, this creates a transaction that **delegates and executes atomically**.
 
-Here’s how to continue the section in your HackMD post, clearly explaining the final step and including the required code:
+Here's how to continue the section in your HackMD post, clearly explaining the final step and including the required code:
 
 ---
 
@@ -439,9 +439,9 @@ Unlike the previous delegation-only step—where we sent the transaction to `0x0
 * The `to` field must be the **EOA address** (since it now temporarily runs the delegated contract logic)
 * The `data` field must contain the **batch calldata** we just built (`batchData`)
 
-Here’s how the final transaction object looks:
+Here's how the final transaction object looks:
 
-```ts
+```typescript
 const tx = {
   type: 4,                            // EIP-7702 transaction type
   chainId,
@@ -465,16 +465,16 @@ This transaction is once again sent by the **relayer**, not the EOA. The EOA onl
 
 ---
 
-Once confirmed, you’ll see on the [block explorer](https://sepolia.etherscan.io/tx/0x477f3fba2f50a0ff01fc55aa940a2f2eacdd8abcf1806a30fbba244d9e12d5f5) that:
+Once confirmed, you'll see on the [block explorer](https://sepolia.etherscan.io/tx/0x477f3fba2f50a0ff01fc55aa940a2f2eacdd8abcf1806a30fbba244d9e12d5f5) that:
 
 * The transaction was sent **to the EOA**
 * The **authorization** was used
 * The **approve** and **register** calls were executed atomically in a single step and now the authorized has [100 tokens less](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#tokentxns) and a [new NFT name](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#nfttransfers)
 
-![Screenshot 2025-05-31 at 7.52.05 PM](https://hackmd.io/_uploads/rkhmdbYGlg.png)
-![Screenshot 2025-05-31 at 7.51.59 PM](https://hackmd.io/_uploads/BJn7ObYMel.png)
+![Tokens Transferred](https://hackmd.io/_uploads/rkhmdbYGlg.png)
+![NFT Minted](https://hackmd.io/_uploads/BJn7ObYMel.png)
 
-✅ You’ve now successfully delegated and executed in a single transaction!
+✅ You've now successfully delegated and executed in a single transaction!
 
 ---
 
@@ -523,7 +523,7 @@ Now, you can manually verify the undelegation by checking the **Authorization Li
 
 🔗 [View transaction on Sepolia Etherscan](https://sepolia.etherscan.io/tx/0x010d31cb5ce4435cd7c84938b59ac4db9e4d545985d159498d7e17c56fb51637#authorizationlist)
 
-![Screenshot 2025-05-31 at 8.04.30 PM](https://hackmd.io/_uploads/HkZqjZtMxl.png)
+![Delegation to empty address](https://hackmd.io/_uploads/HkZqjZtMxl.png)
 
 Once there, confirm the following:
 
