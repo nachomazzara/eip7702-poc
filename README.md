@@ -2,6 +2,8 @@
 
 This repository contains a proof of concept implementation for [EIP-7702](https://eips.ethereum.org/EIPS/eip-7702), which enables EOAs (Externally Owned Accounts) to temporarily adopt smart contract code.
 
+You can check the [blogpost](./POST.md) as well for more info.
+
 ## Overview
 
 EIP-7702 allows EOAs to set contract code for a single transaction, enabling smart contract functionality without permanent deployment. This repo demonstrates practical use cases through batch transaction execution and access control patterns.

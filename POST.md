@@ -1,6 +1,6 @@
-# Implementing EIP-7702: A (almot) Low-Level Guide
+# Implementing EIP-7702: A (almost) Low-Level Guide
 
-> This guide will walk you through implementing EIP-7702 (ERC-7702) at a low level, without using high-level functions from libraries or toolkists like etherjs, viem, alchemy, etc. The goal is to understand the core concepts and mechanics of this EIP by implementing it from scratch.
+> This guide will walk you through implementing EIP-7702 (ERC-7702) at a low level, without using high-level functions from libraries or toolkits like ethers, viem, alchemy, etc. The goal is to understand the core concepts and mechanics of this EIP by implementing it from scratch. For high level understanding refer to [this (viem)](https://eip7702.io/examples#basic-authorization) and/or [this (ethers => wallet.authorize new method)](https://github.com/ethers-io/ethers.js/blob/main/src.ts/wallet/base-wallet.ts#L131)
 
 ## What is EIP-7702?
 
@@ -8,17 +8,18 @@
 
 ## Introduction
 
-This blog post walks you through implementing low-level [EIP-7702 transactions](https://eips.ethereum.org/EIPS/eip-7702), explicitly focusing on the authorization mechanism to clearly expose what happens behind the scenes, without relying on high-level abstractions from libraries like Ethers or Viem. Understanding the authorization process is crucial, as this is the key component that temporarily converts your Externally Owned Account (EOA) into a smart account capable of executing complex logic. Now, more than ever, it's essential to fully grasp what you're signing. A single careless signature could expose your EOA to unintended interactions and potential risks. Always double-check and fully understand each transaction you authorize. Stay safe!.
+This blog post walks you through implementing low-level [EIP-7702 transactions](https://eips.ethereum.org/EIPS/eip-7702), explicitly focusing on the authorization mechanism to clearly expose what happens behind the scenes, without relying on high-level abstractions from libraries like Ethers or Viem. Understanding the authorization process is crucial, as this is the key component that temporarily converts your Externally Owned Account (EOA) into a smart account capable of executing complex logic. Now, more than ever, it's essential to fully grasp what you're signing. A single careless signature could expose your EOA to unintended interactions and potential risks. Always double-check and fully understand each transaction you authorize. Stay safe!
 
 In this guide, we'll walk through **three different scenarios** illustrating how EIP-7702 account delegation works in practice:
 
-* [1️⃣ **Delegating to a Smart Contract**](#1️⃣-delegating-to-a-smart-contract)
-* [2️⃣ **Delegate and Batch Execute (in a Single Transaction)**](#2️⃣-delegate-and-execute-in-a-single-transaction)
-* [3️⃣ **Undelegating (Revoking Delegation)**](#3️⃣-undelegating-revoking-delegation)
-* [🔢 **Bonus track: Advanced Use Cases and Considerations**](#🔢-bonus-track-advanced-use-cases-and-considerations) 
+* [1️⃣ **Delegating to a Smart Contract**](#delegating-to-a-smart-contract)
+* [2️⃣ **Delegate and Batch Execute (in a Single Transaction)**](#delegate-and-execute-in-a-single-transaction)
+* [3️⃣ **Undelegating (Revoking Delegation)**](#undelegating-revoking-delegation)
+* [🔢 **Bonus track: Advanced Use Cases and Considerations**](#bonus-track-advanced-use-cases-and-considerations) 
 
 ---
 
+<a id="delegating-to-a-smart-contract"></a>
 ## 1️⃣ **Delegating to a Smart Contract**
 
 First, we'll demonstrate how you can delegate your **Externally Owned Account (EOA)** to a previously deployed smart contract, temporarily (until you explicitly decide it) transforming your EOA into a smart account capable of executing advanced logic.
@@ -30,7 +31,7 @@ These delegated interactions are referred to as **"User Operations."**
 
 At the end of the blog post, we'll cover how you can enhance security to avoid risks.
 
-### Step 1: Setting Up Provider and Wallets
+### 🛠️ Step 1: Setting Up Provider and Wallets
 
 * **Provider & Wallets Initialization**:
 ```typescript
@@ -42,7 +43,7 @@ At the end of the blog post, we'll cover how you can enhance security to avoid r
   const authorizerKey = process.env.AUTHORIZER_PRIVATE_KEY!
   const authorizer = new Wallet(authorizerKey)
 
-  // **Relayer**: Sends the transaction and covers gas costs (requires Ether). Used to simple simulate how a bundler or relayer will work
+  // **Relayer**: Sends the transaction and covers gas costs (requires Ether). Used to simply simulate how a bundler or relayer will work
   const relayerKey = process.env.RELAYER_PRIVATE_KEY!
   const relayer = new Wallet(relayerKey, provider)
 
@@ -131,7 +132,7 @@ contract BatchDelegator {
 See the code deployed on Sepolia: [0x0eacc2307f0113f26840dd1dac8dc586259994dd](https://sepolia.etherscan.io/address/0x0eacc2307f0113f26840dd1dac8dc586259994dd#code)
 </details>
 
-### Step 2: Creating EIP-7702 Authorization
+### 📝 Step 2: Creating EIP-7702 Authorization
 
 According to EIP-7702, to delegate execution to a smart contract, an EOA must sign a message hash with the following structure and add a new object, the `authorizationList`, to the transaction payload :
 
@@ -193,10 +194,6 @@ const signature = await new SigningKey(authorizer.privateKey).sign(messageHash)
 
 > Note: This is a low-level raw signature—not a typed signature like EIP-712. That simplicity makes it safer and less error-prone.
 
----
-
-### 🧩 Putting It All Together
-
 Once you have the full authorization object, you include it in the transaction like this:
 
 ```typescript
@@ -218,7 +215,7 @@ This `authorizationList` is the **core mechanic** that temporarily turns your EO
 ---
 
 
-Lets see the code:
+Let's see the code:
 
 ```typescript
 const messageHash = keccak256(concat([
@@ -241,7 +238,7 @@ const authorization: AuthorizationLike = {
 }
 ```
 
-### Step 3: Sending the Transaction
+### 🚀 Step 3: Sending the Transaction
 
 We now have everything we need to send the transaction. Since we're only creating the delegation (and not executing anything yet), the transaction will have:
 
@@ -251,7 +248,7 @@ We now have everything we need to send the transaction. Since we're only creatin
 
 - Authorization: the object we just created and signed
 
-This transaction is sent by the relayer, not the EOA—so the user doesn't need to hold any ETH. The EOA only needs to sign the delegation message; the relayer pays for gas and submits the transaction on-chain. 
+This transaction is sent by the relayer, not the EOA, so the user doesn't need to hold any ETH. The EOA only needs to sign the delegation message; the relayer pays for gas and submits the transaction on-chain. 
 
 * Construct a type-4 transaction (EIP-7702 compatible):
 
@@ -300,7 +297,7 @@ If everything was successful, you should see:
 
 ![Authority Match](https://hackmd.io/_uploads/Hk5---Yzgl.png)
 
-You can see in the etherscan that the authority match to the authorizer address and the vailidty is `True`
+You can see in Etherscan that the authority matches the authorizer address and the validity is `True`
 
 ![See new Transactions Type](https://hackmd.io/_uploads/ByqbW-Yzxg.png)
 
@@ -308,11 +305,12 @@ You can also see in the [address page](https://sepolia.etherscan.io/address/0xBA
 
 This confirms that the delegation worked and your EOA is now temporarily behaving like a smart account linked to the delegator contract.
 
-🧠 *Next Steps:* You can now send normal transactions to the EOA address and will use the delegator code. Check [this transaction](https://sepolia.etherscan.io/tx/0x651bacc2422f2d13d70a954c2d697194868a03998c79925510dd5c58f2ede7fc#eventlog) that performs a ERC20 approval. It was sent to the EOA and the EOA is using the delegated contract implementation.
+🧠 *Next Steps:* You can now send normal transactions to the EOA address and will use the delegator code. Check [this transaction](https://sepolia.etherscan.io/tx/0x651bacc2422f2d13d70a954c2d697194868a03998c79925510dd5c58f2ede7fc#eventlog) that performs an ERC-20 approval. It was sent to the EOA and the EOA is using the delegated contract implementation.
 
 
 ---
 
+<a id="delegate-and-execute-in-a-single-transaction"></a>
 ## 2️⃣ **Delegate and Execute (in a Single Transaction)**
 
 Next, we'll explore how delegation and transaction execution can be performed atomically within the same operation. This method allows immediate execution without a separate delegation transaction, making the process efficient and user-friendly.
@@ -321,14 +319,27 @@ We'll provide clear, step-by-step code examples demonstrating this approach.
 
 ### 🔄 Use Case: Registering a Name via Smart Contract
 
-Imagine we want to interact with a **Name Registry contract**, which allows users to register a name and mint an NFT by paying 100 tokens.
+Have you ever been frustrated by the clunky multi-transaction flows in Web3? 🤔
 
-Normally, this would require **two transactions**:
+Imagine you're trying to register a unique name on a decentralized naming service. In the traditional approach, this simple action becomes a **UX nightmare**:
 
-1. **Approve** the Name Registry to spend tokens on your behalf.
-2. **Call** the `register` method with your desired name.
+1. First, you need to **approve** the registry to spend your tokens (wait for confirmation... ⏳)
+2. Then, you **call** the register function (wait again... ⏳)
+3. Two transactions = double the gas fees 💸
+4. Two signatures = double the friction 😫
+5. If the first succeeds but the second fails? You're stuck with a dangling approval! 🚨
 
-But with EIP-7702, we can **batch both steps** and execute them in a single transaction using a delegated smart account.
+**But what if you could do it all in ONE atomic transaction?** 🎯
+
+That's exactly what we're about to show you! With EIP-7702, we'll transform this painful two-step dance into a **single, elegant operation**. No more waiting between steps, no more double gas fees, and no more worrying about partial failures.
+
+**Ready to see the magic?** In the following sections, we'll walk you through how to interact with a **Name Registry contract**, which allows users to register a name by minting an NFT in exchange for 100 tokens:
+
+- How to build the batch calldata 🧱
+- How to combine delegation with execution 🔗
+- How to send it all in one beautiful transaction 🚀
+
+Let's dive in and build something amazing! 👇
 
 ---
 
@@ -427,8 +438,6 @@ This `batchData` is what we set as the `data` field in the transaction. The `to`
 
 Together with the `authorizationList`, this creates a transaction that **delegates and executes atomically**.
 
-Here's how to continue the section in your HackMD post, clearly explaining the final step and including the required code:
-
 ---
 
 ### 🚀 Sending the Delegate + Execute Transaction
@@ -470,7 +479,7 @@ Once confirmed, you'll see on the [block explorer](https://sepolia.etherscan.io/
 
 * The transaction was sent **to the EOA**
 * The **authorization** was used
-* The **approve** and **register** calls were executed atomically in a single step and now the authorized has [100 tokens less](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#tokentxns) and a [new NFT name](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#nfttransfers)
+* The **approve** and **register** calls were executed atomically in a single step and now the authorizer has [100 tokens less](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#tokentxns) and a [new NFT name](https://sepolia.etherscan.io/address/0xba6e94ccd3ef39b5214dc945fb53ad4aadd0bcdb#nfttransfers)
 
 ![Tokens Transferred](https://hackmd.io/_uploads/rkhmdbYGlg.png)
 ![NFT Minted](https://hackmd.io/_uploads/BJn7ObYMel.png)
@@ -479,6 +488,7 @@ Once confirmed, you'll see on the [block explorer](https://sepolia.etherscan.io/
 
 ---
 
+<a id="undelegating-revoking-delegation"></a>
 ## 3️⃣ **Undelegating (Revoking Delegation)**
 
 This section demonstrates how to **revoke a previously granted delegation**, effectively disabling the smart account behavior of the EOA.
@@ -535,10 +545,11 @@ This means the EOA has revoked any previously assigned smart contract logic and 
 
 ✅ This completes the undelegation step.
 
-Here’s a complete **Extras** section for your blogpost, written in a consistent tone and fully formatted in Markdown for HackMD:
+Here's a complete **Extras** section for your blogpost, written in a consistent tone and fully formatted in Markdown for HackMD:
 
 ---
 
+<a id="bonus-track-advanced-use-cases-and-considerations"></a>
 ## 🔢 Bonus Track: Advanced Use Cases and Considerations
 
 Below are some key patterns and ideas for extending delegation securely and flexibly.
@@ -611,7 +622,7 @@ This ensures that even once delegation is active, only explicitly signed actions
 
 #### 🔍 How Signature Verification Works
 
-Here’s what this contract does to ensure **only authorized operations are executed**:
+Here's what this contract does to ensure **only authorized operations are executed**:
 
 * `deadline` and `nonce` provide replay protection and time-bound validity.
 * The contract uses `getBatchHash(...)` to hash:
@@ -624,7 +635,7 @@ Here’s what this contract does to ensure **only authorized operations are exec
 
 If the recovered `signer` **does not match any of the allowedCallers** (i.e., the current EOA being impersonated via EIP-7702), the transaction reverts with `InvalidSignature`.
 
-> ✅ This guarantees that only the account that originally authorized the delegation can execute batches adding an important layer of security.
+> ✅ This guarantees that only the account that originally authorized the delegation can execute batches, adding an important layer of security.
 
 This type of delegator transforms the EOA into a true **programmable smart account**, while still respecting the minimal and temporary nature of EIP-7702 delegation.
 
@@ -684,13 +695,13 @@ You can check the full code [here](https://github.com/nachomazzara/eip7702-poc/b
 
 ### 🔁 3. Multiple Delegations: Last One Wins
 
-If multiple `authorizationList` entries are submitted for the same EOA in the same transaction, the **last one included in the transaction takes effect**. This is why it is not possible to delegate and undelegate within the same transction.
+If multiple `authorizationList` entries are submitted for the same EOA in the same transaction, the **last one included in the transaction takes effect**. This is why it is not possible to delegate and undelegate within the same transaction.
 
 --- 
 
 Thanks all. Thanks for reading!
 
-If you made it this far, I hope this post helped you understand the mechanics of EIP-7702 a little better—or at least sparked some curiosity.
+Hope this post helped you understand the mechanics of EIP-7702 a little better—or at least sparked some curiosity.
 
 Feel free to reach out on [Twitter](https://x.com/nachomazzara) if you have questions, ideas, or just want to nerd out.
 
