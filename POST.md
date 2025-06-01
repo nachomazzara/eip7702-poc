@@ -15,6 +15,7 @@ In this guide, we'll walk through **three different scenarios** illustrating how
 * [1️⃣ **Delegating to a Smart Contract**](#1️⃣-delegating-to-a-smart-contract)
 * [2️⃣ **Delegate and Batch Execute (in a Single Transaction)**](#2️⃣-delegate-and-execute-in-a-single-transaction)
 * [3️⃣ **Undelegating (Revoking Delegation)**](#3️⃣-undelegating-revoking-delegation)
+* [🔢 **Bonus track: Advanced Use Cases and Considerations**](#🔢-bonus-track-advanced-use-cases-and-considerations) 
 
 ---
 
@@ -534,5 +535,163 @@ This means the EOA has revoked any previously assigned smart contract logic and 
 
 ✅ This completes the undelegation step.
 
+Here’s a complete **Extras** section for your blogpost, written in a consistent tone and fully formatted in Markdown for HackMD:
 
+---
 
+## 🔢 Bonus Track: Advanced Use Cases and Considerations
+
+Below are some key patterns and ideas for extending delegation securely and flexibly.
+
+### 🛡️ 1. Safe Delegator with Signature Verification
+
+Instead of using a minimal delegator that blindly forwards calls, a safer approach is to use a delegator that **verifies the EOA's signature on each individual User Operation**.
+
+This typically includes:
+
+* A `UserOperation` struct with fields like `nonce`, `target`, `data`, etc.
+* ECDSA signature verification (`ecrecover`) inside the smart contract
+* Replay protection using nonces
+
+This ensures that even once delegation is active, only explicitly signed actions by the EOA are executed.
+
+> ✅ Recommended for production use to prevent unauthorized access or abuse.
+
+```typescript
+ /// @notice Forwards a batch of calls with signature verification
+    /// @param signedBatch The signed batch containing calls, nonce, deadline and signature
+    /// @return results An array of return data, one per call
+    function executeBatch(SignedBatch calldata signedBatch)
+        external
+        payable
+        returns (bytes[] memory results)
+    {
+        // Check deadline
+        if (block.timestamp > signedBatch.deadline) revert DeadlineExpired();
+        
+        // Check nonce
+        if (usedNonces[signedBatch.nonce]) revert NonceAlreadyUsed();
+        usedNonces[signedBatch.nonce] = true;
+
+        // Verify signature
+        bytes32 messageHash = getBatchHash(
+            signedBatch.calls, signedBatch.nonce, signedBatch.deadline
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(
+            messageHash
+        );
+        address signer = ECDSA.recover(
+            ethSignedMessageHash,
+            signedBatch.signature
+        );
+        
+        // Check if signer is an allowed caller
+        if (!allowedCallers[signer]) revert NotAllowedCaller();
+
+        uint256 n = signedBatch.calls.length;
+        results = new bytes[](n);
+
+        // Forward each call
+        for (uint256 i = 0; i < n; i++) {
+            Call calldata c = signedBatch.calls[i];
+            (bool ok, bytes memory ret) = c.target.call{ value: c.value }(c.data);
+            require(ok, "BatchDelegator: call failed");
+
+            if (ret.length > 0) {
+                bool success = abi.decode(ret, (bool));
+                require(success, "BatchDelegator: call returned false");
+            }
+            results[i] = ret;
+        }
+
+        emit BatchExecuted(address(this), msg.sender, signedBatch.calls, results);
+        return results;
+}
+```
+
+#### 🔍 How Signature Verification Works
+
+Here’s what this contract does to ensure **only authorized operations are executed**:
+
+* `deadline` and `nonce` provide replay protection and time-bound validity.
+* The contract uses `getBatchHash(...)` to hash:
+
+  * The list of calls
+  * The nonce
+  * The deadline
+* It then wraps that hash using `toEthSignedMessageHash(...)`, mimicking `eth_sign` behavior.
+* Finally, it uses `ECDSA.recover(...)` to extract the **signer** from the provided signature.
+
+If the recovered `signer` **does not match any of the allowedCallers** (i.e., the current EOA being impersonated via EIP-7702), the transaction reverts with `InvalidSignature`.
+
+> ✅ This guarantees that only the account that originally authorized the delegation can execute batches adding an important layer of security.
+
+This type of delegator transforms the EOA into a true **programmable smart account**, while still respecting the minimal and temporary nature of EIP-7702 delegation.
+
+You can check the full code [here](https://github.com/nachomazzara/eip7702-poc/blob/main/src/contracts/batchDelegatorWithCallers.sol)
+
+---
+
+### 🔐 2. Delegator with Social Recovery or Multi-Signer Logic
+
+Another extension is to design the delegator with **social recovery mechanisms** or **multi-signer logic**, where:
+
+* Additional addresses (guardians, recovery keys, etc.) can be added over time
+* The EOA can delegate permission to more than one signer
+* Recovery or revocation can be triggered if the primary key is lost
+
+This turns the delegator into a more complete **smart account** or **wallet contract**, bringing flexibility and resilience while maintaining EIP-7702's temporary delegation model.
+
+Below is an example of a function that updates the list of allowed callers, but only after verifying a signature from the designated admin. Remember that you can enhance social recovery by using the same approach for having multiple admins:
+
+```typescript
+/// @notice Update callers (add or remove) with signature verification
+/// @param signedUpdate The signed update containing callers, add/remove flags, nonce, deadline and signature
+function updateCallers(SignedCallerUpdate calldata signedUpdate) external {
+    // Check arrays length
+    if (signedUpdate.callers.length != signedUpdate.isAdding.length) revert ArrayLengthMismatch();
+    
+    // Check deadline
+    if (block.timestamp > signedUpdate.deadline) revert DeadlineExpired();
+    
+    // Check nonce
+    if (usedNonces[signedUpdate.nonce]) revert NonceAlreadyUsed();
+    usedNonces[signedUpdate.nonce] = true;
+
+    // Verify signature from admin
+    bytes32 messageHash = getCallerUpdateHash(
+        signedUpdate.callers, 
+        signedUpdate.isAdding, 
+        signedUpdate.nonce, 
+        signedUpdate.deadline
+    );
+    bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+    address signer = ECDSA.recover(ethSignedMessageHash, signedUpdate.signature);
+    
+    if (signer != admin) revert InvalidSignature();
+
+    // Update callers
+    for (uint256 i = 0; i < signedUpdate.callers.length; i++) {
+        allowedCallers[signedUpdate.callers[i]] = signedUpdate.isAdding[i];
+        emit CallerUpdated(signedUpdate.callers[i], signedUpdate.isAdding[i]);
+    }
+}
+```
+
+You can check the full code [here](https://github.com/nachomazzara/eip7702-poc/blob/main/src/contracts/batchDelegatorWithCallers.sol)
+
+---
+
+### 🔁 3. Multiple Delegations: Last One Wins
+
+If multiple `authorizationList` entries are submitted for the same EOA in the same transaction, the **last one included in the transaction takes effect**. This is why it is not possible to delegate and undelegate within the same transction.
+
+--- 
+
+Thanks all. Thanks for reading!
+
+If you made it this far, I hope this post helped you understand the mechanics of EIP-7702 a little better—or at least sparked some curiosity.
+
+Feel free to reach out on [Twitter](https://x.com/nachomazzara) if you have questions, ideas, or just want to nerd out.
+
+See you on-chain!

@@ -28,13 +28,23 @@ contract BatchDelegator {
         bytes signature;
     }
 
+    struct SignedCallerUpdate {
+        address[] callers;
+        bool[] isAdding;  // true = add, false = remove
+        uint256 nonce;
+        uint256 deadline;
+        bytes signature;
+    }
+
     // State variables
     address public admin;
+    mapping(address => bool) public allowedCallers;
     mapping(uint256 => bool) public usedNonces;
     bool private initialized;
 
     // Events
     event AdminChanged(address indexed previousAdmin, address indexed newAdmin);
+    event CallerUpdated(address indexed caller, bool isAdded);
     event BatchExecuted(
         address indexed signer,
         address indexed executor,
@@ -47,6 +57,8 @@ contract BatchDelegator {
     error DeadlineExpired();
     error NonceAlreadyUsed();
     error AlreadyInitialized();
+    error NotAllowedCaller();
+    error ArrayLengthMismatch();
 
     /// @notice Initialize the contract with an admin
     /// @param _admin The address of the initial admin
@@ -79,6 +91,38 @@ contract BatchDelegator {
         emit AdminChanged(previousAdmin, signedChange.newAdmin);
     }
 
+    /// @notice Update callers (add or remove) with signature verification
+    /// @param signedUpdate The signed update containing callers, add/remove flags, nonce, deadline and signature
+    function updateCallers(SignedCallerUpdate calldata signedUpdate) external {
+        // Check arrays length
+        if (signedUpdate.callers.length != signedUpdate.isAdding.length) revert ArrayLengthMismatch();
+        
+        // Check deadline
+        if (block.timestamp > signedUpdate.deadline) revert DeadlineExpired();
+        
+        // Check nonce
+        if (usedNonces[signedUpdate.nonce]) revert NonceAlreadyUsed();
+        usedNonces[signedUpdate.nonce] = true;
+
+        // Verify signature from admin
+        bytes32 messageHash = getCallerUpdateHash(
+            signedUpdate.callers, 
+            signedUpdate.isAdding, 
+            signedUpdate.nonce, 
+            signedUpdate.deadline
+        );
+        bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
+        address signer = ECDSA.recover(ethSignedMessageHash, signedUpdate.signature);
+        
+        if (signer != admin) revert InvalidSignature();
+
+        // Update callers
+        for (uint256 i = 0; i < signedUpdate.callers.length; i++) {
+            allowedCallers[signedUpdate.callers[i]] = signedUpdate.isAdding[i];
+            emit CallerUpdated(signedUpdate.callers[i], signedUpdate.isAdding[i]);
+        }
+    }
+
     /// @notice Forwards a batch of calls with signature verification
     /// @param signedBatch The signed batch containing calls, nonce, deadline and signature
     /// @return results An array of return data, one per call
@@ -99,7 +143,8 @@ contract BatchDelegator {
         bytes32 ethSignedMessageHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
         address signer = ECDSA.recover(ethSignedMessageHash, signedBatch.signature);
         
-        if (signer != address(this)) revert InvalidSignature();
+        // Check if signer is an allowed caller
+        if (!allowedCallers[signer]) revert NotAllowedCaller();
 
         uint256 n = signedBatch.calls.length;
         results = new bytes[](n);
@@ -117,7 +162,7 @@ contract BatchDelegator {
             results[i] = ret;
         }
 
-        emit BatchExecuted(address(this), msg.sender, signedBatch.calls, results);
+        emit BatchExecuted(signer, msg.sender, signedBatch.calls, results);
         return results;
     }
 
@@ -137,5 +182,20 @@ contract BatchDelegator {
     /// @return The hash of the admin change
     function getAdminChangeHash(address newAdmin, uint256 nonce, uint256 deadline) public pure returns (bytes32) {
         return keccak256(abi.encode(newAdmin, nonce, deadline));
+    }
+
+    /// @notice Get the hash of a caller update for signing
+    /// @param callers The callers to update
+    /// @param isAdding The flags indicating add (true) or remove (false)
+    /// @param nonce The nonce for replay protection
+    /// @param deadline The deadline for the update
+    /// @return The hash of the caller update
+    function getCallerUpdateHash(
+        address[] calldata callers, 
+        bool[] calldata isAdding, 
+        uint256 nonce, 
+        uint256 deadline
+    ) public pure returns (bytes32) {
+        return keccak256(abi.encode(callers, isAdding, nonce, deadline));
     }
 }
