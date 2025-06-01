@@ -558,6 +558,15 @@ Below are some key patterns and ideas for extending delegation securely and flex
 
 Instead of using a minimal delegator that blindly forwards calls, a safer approach is to use a delegator that **verifies the EOA's signature on each individual User Operation**.
 
+> ⚠️ Once you sign an EIP-7702 authorization, you are effectively telling the network:
+> “This contract can act on my behalf.”
+
+That means **anyone** can send transactions to that delegated contract in your name, **as long as it's during the active delegation window**. If the contract doesn't have internal logic to verify who called it (like checking the sender or validating per-call signatures), then **anyone could potentially call sensitive functions**, drain your assets, or exploit approvals.
+
+So please:
+**Always check what you're signing**, and make sure any delegated contract includes strict verification mechanisms. With great power (temporary smart accounts) comes great responsibility (not getting rekt).
+
+
 This typically includes:
 
 * A `UserOperation` struct with fields like `nonce`, `target`, `data`, etc.
