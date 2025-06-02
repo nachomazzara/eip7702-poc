@@ -10,7 +10,7 @@
 
 This blog post walks you through implementing low-level [EIP-7702 transactions](https://eips.ethereum.org/EIPS/eip-7702), explicitly focusing on the authorization mechanism to clearly expose what happens behind the scenes, without relying on high-level abstractions from libraries like Ethers or Viem. Understanding the authorization process is crucial, as this is the key component that temporarily converts your Externally Owned Account (EOA) into a smart account capable of executing complex logic. Now, more than ever, it's essential to fully grasp what you're signing. A single careless signature could expose your EOA to unintended interactions and potential risks. Always double-check and fully understand each transaction you authorize. Stay safe!
 
-See [the repo](https://github.com/nachomazzara/eip7702-poc/blob/main/src) for full code examples.
+💻 See [the repo](https://github.com/nachomazzara/eip7702-poc/blob/main/src) for full code examples.
 
 In this guide, we'll walk through **three different scenarios** illustrating how EIP-7702 account delegation works in practice:
 
