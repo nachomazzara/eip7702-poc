@@ -10,6 +10,8 @@
 
 This blog post walks you through implementing low-level [EIP-7702 transactions](https://eips.ethereum.org/EIPS/eip-7702), explicitly focusing on the authorization mechanism to clearly expose what happens behind the scenes, without relying on high-level abstractions from libraries like Ethers or Viem. Understanding the authorization process is crucial, as this is the key component that temporarily converts your Externally Owned Account (EOA) into a smart account capable of executing complex logic. Now, more than ever, it's essential to fully grasp what you're signing. A single careless signature could expose your EOA to unintended interactions and potential risks. Always double-check and fully understand each transaction you authorize. Stay safe!
 
+See [the repo](https://github.com/nachomazzara/eip7702-poc/blob/main/src) for full code examples.
+
 In this guide, we'll walk through **three different scenarios** illustrating how EIP-7702 account delegation works in practice:
 
 * [1️⃣ **Delegating to a Smart Contract**](#delegating-to-a-smart-contract)
@@ -307,6 +309,7 @@ This confirms that the delegation worked and your EOA is now temporarily behavin
 
 🧠 *Next Steps:* You can now send normal transactions to the EOA address and will use the delegator code. Check [this transaction](https://sepolia.etherscan.io/tx/0x651bacc2422f2d13d70a954c2d697194868a03998c79925510dd5c58f2ede7fc#eventlog) that performs an ERC-20 approval. It was sent to the EOA and the EOA is using the delegated contract implementation.
 
+💻 See the full code [here.](https://github.com/nachomazzara/eip7702-poc/blob/main/src/delegate.ts)
 
 ---
 
@@ -486,6 +489,8 @@ Once confirmed, you'll see on the [block explorer](https://sepolia.etherscan.io/
 
 ✅ You've now successfully delegated and executed in a single transaction!
 
+💻 See the full code [here.](https://github.com/nachomazzara/eip7702-poc/blob/main/src/register_name.ts)
+    
 ---
 
 <a id="undelegating-revoking-delegation"></a>
@@ -545,7 +550,7 @@ This means the EOA has revoked any previously assigned smart contract logic and 
 
 ✅ This completes the undelegation step.
 
-Here's a complete **Extras** section for your blogpost, written in a consistent tone and fully formatted in Markdown for HackMD:
+💻 See the full code [here.](https://github.com/nachomazzara/eip7702-poc/blob/main/src/undelegate.ts)
 
 ---
 
@@ -710,7 +715,7 @@ If multiple `authorizationList` entries are submitted for the same EOA in the sa
 
 Thanks all. Thanks for reading!
 
-Hope this post helped you understand the mechanics of EIP-7702 a little better—or at least sparked some curiosity.
+Hope this post helped you understand the mechanics of EIP-7702 a little better—or at least sparked some curiosity. [Here](https://github.com/nachomazzara/eip7702-poc) you can find the repo for full code examples.
 
 Feel free to reach out on [Twitter](https://x.com/nachomazzara) if you have questions, ideas, or just want to nerd out.
 
