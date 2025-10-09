@@ -375,7 +375,7 @@ These two actions are wrapped into a batch and executed via the **delegated cont
 
 ---
 
-### ⚙️ Prerequisite
+### Prerequisite
 
 Before doing this, you must ensure your EOA **has 100 tokens**. If not, mint or transfer tokens to the EOA first so the `register` call doesn't fail due to insufficient balance.
 
