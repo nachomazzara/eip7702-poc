@@ -286,8 +286,10 @@ By setting `to` as `0x0` and leaving `data` empty (`0x`), we ensure:
 
 This is a minimal, no-op transaction where the only effect is that the EOA **adopts the contract code temporarily**, enabling smart account behavior for future transactions.
 
+:::success
 **The EOA now has delegated code, but nothing was executed yet.**
-
+:::
+    
 There, you'll see a new section under the transaction details labeled **Authorization List**. This is part of the new `0x04` transaction format introduced by EIP-7702.
 
 If everything was successful, you should see:
@@ -487,7 +489,9 @@ Once confirmed, you'll see on the [block explorer](https://sepolia.etherscan.io/
 ![Tokens Transferred](https://hackmd.io/_uploads/rkhmdbYGlg.png)
 ![NFT Minted](https://hackmd.io/_uploads/BJn7ObYMel.png)
 
+:::success
 You've now successfully delegated and executed in a single transaction!
+:::
 
 See the full code [here.](https://github.com/nachomazzara/eip7702-poc/blob/main/src/register_name.ts)
     
@@ -548,7 +552,9 @@ Once there, confirm the following:
 
 This means the EOA has revoked any previously assigned smart contract logic and is now back to regular EOA behavior—no contract execution will occur on its behalf going forward. Check [this transaction](https://sepolia.etherscan.io/tx/0xf6dd2dff39db1f6707a97de6bfb21ef5785e5683e418debe380948f24f3bf7a5) that calls the EOA but no code is executed.
 
-This completes the undelegation step!.
+:::success
+This completes the undelegation step.
+:::
 
 See the full code [here.](https://github.com/nachomazzara/eip7702-poc/blob/main/src/undelegate.ts)
 
